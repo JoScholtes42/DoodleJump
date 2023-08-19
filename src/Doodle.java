@@ -6,21 +6,18 @@ import java.util.HashSet;
 import static java.awt.event.KeyEvent.VK_LEFT;
 import static java.awt.event.KeyEvent.VK_RIGHT;
 
-
 public class Doodle implements KeyListener {
 
     private final int WIDTH=600;
     private final int HEIGHT=Toolkit.getDefaultToolkit().getScreenSize().height;
     private int baseHeight = HEIGHT/6*5;
-    private Point currentPosition = new Point(WIDTH/2, baseHeight);
+    private final Point currentPosition = new Point(WIDTH/2, baseHeight);
     private int horizontalVelocity=0;
     private final int MAXVELOCITY=3;
     private int velocity = MAXVELOCITY;
     private int counter = 0;
     private int acceleration = -1;
     HashSet <Integer> pressedKeys = new HashSet<>();
-
-
 
     public Doodle() {
         Timer moveTimer= new Timer(1,e->{
@@ -37,6 +34,13 @@ public class Doodle implements KeyListener {
         moveTimer.start();
     }
 
+    public int getBaseHeight() {
+        return baseHeight;
+    }
+
+    public void setBaseHeight(int baseHeight) {
+        this.baseHeight = baseHeight;
+    }
 
     public void jump(){
         currentPosition.y -= velocity;
@@ -57,7 +61,6 @@ public class Doodle implements KeyListener {
         counter=0;
         velocity=MAXVELOCITY;
     }
-
 
     public void draw(Graphics g){
         g.setColor(Color.yellow);
@@ -102,5 +105,4 @@ public class Doodle implements KeyListener {
             horizontalVelocity = 1;
         }
     }
-
 }

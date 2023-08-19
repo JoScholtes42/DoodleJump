@@ -3,10 +3,10 @@ import java.util.ArrayList;
 
 public class Platform {
 
-    private static ArrayList<Platform> platforms = new ArrayList<>();
-    private static final int LENGTH =20;
-    private static final int HEIGHT =5;
-    private Point position;
+    private static final ArrayList<Platform> platforms = new ArrayList<>();
+    private static final int LENGTH =80;
+    private static final int HEIGHT =15;
+    private final Point position;
 
     public static int getLENGTH() {
         return LENGTH;
@@ -28,17 +28,9 @@ public class Platform {
         return platforms;
     }
 
-    public static int getHighestPlatformHeight(){
-        Platform highest = platforms.get(0);
-        for(Platform p :platforms){
-            if(p.getPosition().y<highest.getPosition().y){
-                highest=p;
-            }
-        }
-        return highest.getPosition().y;
-    }
 
     public static void addPlattform(Platform p){
+        System.out.println(p.getPosition().y + ": "+p);
         platforms.add(p);
     }
 
@@ -48,7 +40,7 @@ public class Platform {
 
     public void draw(Graphics g){
         g.setColor(Color.blue);
-        g.drawRoundRect(position.x-LENGTH/2, position.y- HEIGHT,LENGTH,HEIGHT,10,10 );
+        g.drawRoundRect(position.x-LENGTH/2, position.y,LENGTH,HEIGHT,15,15 );
 
     }
 
