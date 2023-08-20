@@ -1,65 +1,125 @@
+/*
+* @author Jo Scholtes
+* */
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.util.HashSet;
-import static java.awt.event.KeyEvent.VK_LEFT;
-import static java.awt.event.KeyEvent.VK_RIGHT;
+
+import static java.awt.event.KeyEvent.*;
 
 public class Doodle implements KeyListener {
 
     private final int WIDTH=600;
     private final int HEIGHT=Toolkit.getDefaultToolkit().getScreenSize().height;
     private int baseHeight = HEIGHT/6*5;
-    private final Point currentPosition = new Point(WIDTH/2, baseHeight);
+    private Point currentPosition = new Point(WIDTH/2, baseHeight);
     private int horizontalVelocity=0;
     private final int MAXVELOCITY=3;
     private int velocity = MAXVELOCITY;
     private int counter = 0;
     private int acceleration = -1;
     HashSet <Integer> pressedKeys = new HashSet<>();
+    private boolean isFalling=false;
+    private MainFrame mainFrame;
+    private boolean isCliming=false;//when jumping over the height limit
 
     public Doodle() {
-        Timer moveTimer= new Timer(1,e->{
-            switch(currentPosition.x){
-                case(-1):
-                    currentPosition.x=600;
-                    break;
-                case(601):
-                    currentPosition.x=0;
-                    break;
+        Thread lookingForPlatformHitsThread = new Thread(lookingForPlatformHits);
+        Timer moveTimer= new Timer(2,e->{
+            if(currentPosition.x<=-1){
+                currentPosition.x=600;
+            }else if(currentPosition.x>=601){
+                currentPosition.x=0;
             }
             currentPosition.x+=horizontalVelocity;
         });
         moveTimer.start();
+        lookingForPlatformHitsThread.start();
+        Messager.setDoodle(this);
+
+
     }
+    public void takeMainFrame(){
+        mainFrame=Messager.getMainFrame();
+    }
+
+
+    public int getMAXVELOCITY() {
+        return MAXVELOCITY;
+    }
+
+    public void gameOver(){
+        currentPosition = new Point(WIDTH/2, baseHeight);
+        isFalling=false;
+        counter=0;
+        heightUpdated();
+
+
+    }
+
+    Runnable lookingForPlatformHits =() -> {
+        while(!Thread.interrupted()) {
+            while (isFalling) {
+                for (Platform p : Platform.getPlatforms()) {
+                    if (currentPosition.y >= p.getPosition().y&& currentPosition.y<=p.getPosition().y+Platform.getHEIGHT()) {
+                        if (currentPosition.x > p.getPosition().x - Platform.getLENGTH() / 2 &&
+                                currentPosition.x < p.getPosition().x + Platform.getLENGTH() / 2) {
+                            velocity = MAXVELOCITY;
+                            counter = 0;
+                            isFalling=false;
+                            mainFrame.updateHeight(baseHeight-p.getPosition().y);
+                            baseHeight=p.getPosition().y;
+                        }
+
+                    }
+                }
+            }
+        }
+    };
 
     public int getBaseHeight() {
         return baseHeight;
     }
 
-    public void setBaseHeight(int baseHeight) {
-        this.baseHeight = baseHeight;
+
+    public void jump() throws InterruptedException {
+
+        if(baseHeight==900){
+            isCliming=false;
+        }
+        if(!isCliming) {
+            currentPosition.y -= velocity;
+            counter += 1;
+            if (counter == 60) {
+                counter = 0;
+                velocity += acceleration;
+
+            }
+            if (currentPosition.y <= HEIGHT / 2 - 10) {
+                velocity = 0;
+                isCliming = true;
+                currentPosition.y+=5;
+                return;
+            }
+            if (velocity < 0) {
+                if (currentPosition.y > HEIGHT + 50) {
+                    Messager.gameOver();
+                    return;
+                }
+                isFalling = true;
+            }
+        }
     }
 
-    public void jump(){
-        currentPosition.y -= velocity;
-        counter+=1;
-        if (counter == 60) {
-            if (velocity > MAXVELOCITY)
-                acceleration = 0;
-            counter = 0;
-            velocity += acceleration;
-        }
-        if(currentPosition.y>= baseHeight){
-            hitsPlatform();
-        }
-    }
+    public void heightUpdated(){
 
-    public void hitsPlatform(){
-        acceleration=-1;
-        counter=0;
-        velocity=MAXVELOCITY;
+        currentPosition.y-=5;
+        baseHeight=900;
+       isCliming=false;
+
     }
 
     public void draw(Graphics g){
@@ -82,6 +142,13 @@ public class Doodle implements KeyListener {
                 pressedKeys.add(keyEvent.getKeyCode());
                 updateHorizontalVelocity();
                 break;
+            case(VK_SPACE):
+                try {
+                    mainFrame.starOver();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                break;
         }
     }
 
@@ -99,10 +166,10 @@ public class Doodle implements KeyListener {
     private void updateHorizontalVelocity() {
         horizontalVelocity=0;
         if (pressedKeys.contains(VK_LEFT)) {
-            horizontalVelocity = -1;
+            horizontalVelocity = -2;
         }
         if (pressedKeys.contains(VK_RIGHT)) {
-            horizontalVelocity = 1;
+            horizontalVelocity = 2;
         }
     }
 }

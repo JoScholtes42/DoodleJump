@@ -1,3 +1,6 @@
+/*
+ * @author Jo Scholtes
+ * */
 import java.awt.*;
 import java.util.ArrayList;
 
@@ -6,7 +9,7 @@ public class Platform {
     private static final ArrayList<Platform> platforms = new ArrayList<>();
     private static final int LENGTH =80;
     private static final int HEIGHT =15;
-    private final Point position;
+    private Point position;
 
     public static int getLENGTH() {
         return LENGTH;
@@ -20,21 +23,28 @@ public class Platform {
         return position;
     }
 
+    public static void deletePlatforms(){
+        platforms.clear();
+    }
+
+    public void setYPosition(int yDifference){
+        position.y+=yDifference;
+    }
+
     public Platform(Point position) {
         this.position = position;
     }
 
-    public static ArrayList<Platform> getPlatforms() {
+    public synchronized static ArrayList<Platform> getPlatforms() {
         return platforms;
     }
 
 
-    public static void addPlattform(Platform p){
-        System.out.println(p.getPosition().y + ": "+p);
+    public synchronized static void addPlattform(Platform p){
         platforms.add(p);
     }
 
-    public static void remove(Platform p){
+    public synchronized static void remove(Platform p){
         platforms.remove(p);
     }
 
