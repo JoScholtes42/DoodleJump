@@ -1,41 +1,60 @@
-/*
- * @author Jo Scholtes
- * */
 import javax.swing.*;
 import java.awt.*;
 
 public class MainFrame {
+    private final DoodlePre doodlePre;
+    private static MainFrame mainFrame;
 
-    private final Doodle doodle;
-    private final Dimension SCREENSIZE=Toolkit.getDefaultToolkit().getScreenSize();
-    private final DrawPanel drawPanel = new DrawPanel();
+    private final Dimension FRAMESIZE =new Dimension(Toolkit.getDefaultToolkit().getScreenSize().width/3,Toolkit.getDefaultToolkit().getScreenSize().height);
+    private JLabel scoreLabel;
+    private final JFrame frame;
+    private JLabel gameOverLabel;
+    private JLabel title;
+
     private final Timer platformTimer;
-    Thread platformThread ;
-    private int highestPlatform=900;
+    private Thread platformThread ;
+
     private int score=0;
     private final Color MYYELLOW =new Color(255, 214, 0);  // Vibrant yellow color
     private final Font MYFONT = new Font("Press Start 2P", Font.PLAIN, 36);  // Retro arcade font
     private int remainingHeightDifference=0;
     private int lastJumpHeight=0;
-    private Platform bufferedPlatform;
+    private PlatformPre bufferedPlatform;
     private final Timer jumpTimer;
     private int requestedHeight=0;
     private boolean enoughSpace = true;
-    private JLabel scoreLabel;
-    JFrame frame;
-    JLabel gameOverLabel = new JLabel("Game Over");
+    private DrawPanel drawPanel= new DrawPanel();
+    private PlatformPre highestPlatform;
 
+
+
+    public static void main(String[] args){
+        mainFrame= new MainFrame();
+        mainFrame.open();
+
+    }
+    public static void gameOver(){
+        mainFrame.doodlePre.gameOver();
+        //jumpTimer.stop();
+        //stopPlatformTimer();
+        //gameOverLabel.setVisible(true);
+    }
+
+    public static void newHeight(int velocity, int accelerationCounter, int MAXACCELARATIONCOUNTER, int lastjumpedPlatformHeight){
+        mainFrame.updateHeight(velocity,accelerationCounter,MAXACCELARATIONCOUNTER,lastjumpedPlatformHeight);
+    }
 
     public MainFrame() {
+        doodlePre =new DoodlePre();
+        drawPanel.setDoodle(doodlePre);
+        drawPanel.setScreensize(Toolkit.getDefaultToolkit().getScreenSize());
+
         frame = new JFrame("Doodle Jump (Pac-Man-Edition)");
-        doodle=new Doodle();
-        Messager.setMainFrame(this);
-        doodle.takeMainFrame();
-        drawPanel.takeDoodle();
+
         platformThread = new Thread(createPlatforms);
         jumpTimer = new Timer(2,e ->{
             try {
-                doodle.jump();
+                doodlePre.jump();
             } catch (InterruptedException ex) {
                 ex.printStackTrace();
             }
@@ -43,15 +62,16 @@ public class MainFrame {
 
         } );
         platformTimer = new Timer(2, e ->{
-            if(remainingHeightDifference>=doodle.getMAXVELOCITY()){
-                remainingHeightDifference-=doodle.getMAXVELOCITY();
-                score+= doodle.getMAXVELOCITY();
-                movePlatforms(doodle.getMAXVELOCITY());
-                if(lastJumpHeight-remainingHeightDifference>=requestedHeight+50 ){
-                    Platform.addPlattform(bufferedPlatform);
-                    enoughSpace=true;
+            if(remainingHeightDifference>= doodlePre.getMAXVELOCITY()){
+                remainingHeightDifference-= doodlePre.getMAXVELOCITY();
+                score+= doodlePre.getMAXVELOCITY();
+                movePlatforms(doodlePre.getMAXVELOCITY());
+                if(lastJumpHeight-remainingHeightDifference>=requestedHeight ){
+                    PlatformDat.addPlattform(bufferedPlatform);
                     requestedHeight=0;
                     lastJumpHeight=0;
+                    bufferedPlatform=null;
+                    enoughSpace=true;
                 }
 
             }else if(remainingHeightDifference>=0){
@@ -61,34 +81,36 @@ public class MainFrame {
 
                 movePlatforms(remainingHeightDifference);
                 remainingHeightDifference=-1;
-                doodle.heightUpdated();
+                //TODO doodlePre.heightUpdated();
 
             }else{
                 stopPlatformTimer();
             }
         });
-        Platform firstPlatform = new Platform(new Point(300,doodle.getBaseHeight()));
-        Platform.addPlattform(firstPlatform);
+
+        PlatformPre firstPlatform = new PlatformPre(new Point(300, doodlePre.getBaseHeight())) ;
+        highestPlatform=firstPlatform;
+        PlatformDat.addPlattform(firstPlatform);
         jumpTimer.start();
         platformThread.setDaemon(true);
         platformThread.start();
     }
 
-    private void movePlatforms(int heightDifference){
-        for(Platform p:Platform.getPlatforms()){
-            p.setYPosition(heightDifference);
-        }
-    }
+
+
 
     Runnable createPlatforms = () -> {
+        PlatformPre p;
         while(!Thread.interrupted()) {
-            Platform p;
-            while (enoughSpace) {
-                p = getNewPlatform();
-                if (p == null) {
-                    enoughSpace = false;
+            while(enoughSpace) {
+                p = PlatformDat.getNewPlatform(highestPlatform.getPosition().y, FRAMESIZE);
+                if (p.getPosition().y <= FRAMESIZE.height / 8 + 50) {
+                    requestedHeight = FRAMESIZE.height / 8 + 50 - p.getPosition().y;
+                    bufferedPlatform = p;
+                    enoughSpace=false;
                 } else {
-                    Platform.addPlattform(p);
+                    PlatformDat.addPlattform(p);
+                    highestPlatform = p;
                 }
             }
         }
@@ -99,29 +121,39 @@ public class MainFrame {
     }
 
 
-    public void updateHeight(int heightdifference){
-        lastJumpHeight=heightdifference;
-        remainingHeightDifference=heightdifference;
-        platformTimer.start();
+    private void updateHeight(int velocity, int accelerationCounter, int MAXACCELARATIONCOUNTER, int lastjumpedPlatformHeight){
+
+        lastJumpHeight=doodlePre.getBaseHeight()-lastjumpedPlatformHeight;
+        while(velocity!=0){
+            movePlatforms(velocity);
+            if(accelerationCounter==MAXACCELARATIONCOUNTER){
+                accelerationCounter=0;
+                velocity-=1;
+            }
+            else {
+                accelerationCounter+=1;
+            }
+        }
         drawPanel.repaint();
     }
 
-    public void gameOver(){
-        jumpTimer.stop();
-        stopPlatformTimer();
-        gameOverLabel.setVisible(true);
+    private void movePlatforms(int heightDifference){
 
-
-
+        ApplyFunction move =(p)->p.move(heightDifference);
+        boolean isFinished =PlatformDat.applyMethod(move);
+        if(isFinished){
+            doodlePre.heightUpdated();
+        }
     }
+
 
     public void starOver() throws InterruptedException {
         gameOverLabel.setVisible(false);
-        Platform.deletePlatforms();
+        PlatformDat.clearPlatforms();
         scoreLabel.setText("0");
-        Platform firstPlatform = new Platform(new Point(300,doodle.getBaseHeight()));
-        Platform.addPlattform(firstPlatform);
-        highestPlatform=firstPlatform.getPosition().y;
+        PlatformPre firstPlatform = new PlatformPre(new Point(300, doodlePre.getBaseHeight()));
+        PlatformDat.addPlattform(firstPlatform);
+        highestPlatform=firstPlatform;
         Thread.sleep(100);
         jumpTimer.start();
         enoughSpace=true;
@@ -129,71 +161,69 @@ public class MainFrame {
         drawPanel.setGameOver(false);
     }
 
-    public void open(){
+    public void open() {
+        createArcadeGameLabels();
 
-        JLabel title = createArcadeGameLabels("Doodle Jump: Pac-Man-Edition");
+
+        drawPanel.add(title);
+        drawPanel.add(scoreLabel);
+        drawPanel.add(gameOverLabel);
+        drawPanel.repaint();
+
+        drawPanel.addKeyListener(doodlePre.getKeyListener());
+        drawPanel.setFocusable(true);
+        /*drawPanel.setSize(FRAMESIZE.width,FRAMESIZE.height/8*7);
+        drawPanel.setLocation(0,700);
+        drawPanel.repaint();*/
+
+        frame.add(drawPanel);
+
+        frame.setBackground(new Color(70, 0, 70));
+        frame.setResizable(false);
+        frame.setLocation(FRAMESIZE.width, 0);
+        frame.setSize(FRAMESIZE.width, FRAMESIZE.height);
+        frame.setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        frame.setVisible(true);
+
+
+    }
+    private void createArcadeGameLabels() {
+        title = new JLabel("Doodle Jump: Pac-Man-Edition");
+        title.setHorizontalAlignment(SwingConstants.CENTER);
+        title.setForeground(MYYELLOW);
+        title.setFont(MYFONT);
+        title.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(0, 0, 0, 50), 3),
+                BorderFactory.createEmptyBorder(10, 20, 10, 20)
+        ));
+        title.setLocation(FRAMESIZE.width/6,0);
+
+
         scoreLabel = new JLabel(Integer.toString(score));
         scoreLabel.setForeground(MYYELLOW);
         scoreLabel.setFont(MYFONT);
-        scoreLabel.setHorizontalAlignment(SwingConstants.LEFT);
-        drawPanel.add(title);
-        drawPanel.add(scoreLabel);
-        drawPanel.repaint();
-        drawPanel.addKeyListener(doodle);
-        drawPanel.setFocusable(true);
-        gameOverLabel.setLocation(0,SCREENSIZE.height);
-        drawPanel.add(gameOverLabel);
+        scoreLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        //  scoreLabel.setVerticalAlignment(SwingConstants.CENTER);
 
-        frame.add(drawPanel);
-        frame.setBackground(new Color(0,0,139));
-        frame.setResizable(false);
-        frame.setLocation(SCREENSIZE.width/2-300,0);
-        frame.setSize(600,SCREENSIZE.height);
-        frame.setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
-        frame.setVisible(true);
-    }
-    public JLabel createArcadeGameLabels(String Title) {
+        gameOverLabel = new JLabel("Game Over");
         gameOverLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        gameOverLabel.setVerticalAlignment(SwingConstants.CENTER);
         gameOverLabel.setForeground(new Color(255, 0, 0));  // Vibrant yellow color
-
         gameOverLabel.setFont(MYFONT);
-
         gameOverLabel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(0, 0, 0, 50), 3),
                 BorderFactory.createEmptyBorder(10, 20, 10, 20)
         ));
 
         gameOverLabel.setVisible(false);
-
-        JLabel label = new JLabel(Title);
-        label.setHorizontalAlignment(SwingConstants.CENTER);
-        label.setForeground(MYYELLOW);
-        label.setFont(MYFONT);
-        label.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(0, 0, 0, 50), 3),
-                BorderFactory.createEmptyBorder(10, 20, 10, 20)
-        ));
-        label.setLocation(0,0);
-        return label;
     }
 
-    public Point getRandomPosition(){
-        int x = (int)(Math.random()*(600-Platform.getLENGTH())+Platform.getLENGTH()/2);
-        int y= highestPlatform-
-                ((int)(Math.random()*(SCREENSIZE.height/2-SCREENSIZE.height/6-100))+20);
-        return new Point(x,y);
-    }
 
-    public Platform getNewPlatform(){
-        Point position = getRandomPosition();
-        if(position.y>Platform.getHEIGHT()+SCREENSIZE.height/8){
-            highestPlatform= position.y;
-           return new Platform(position);
-        }
-        else{
-            requestedHeight= position.y;
-            bufferedPlatform=new Platform(position);
-            return null;
-        }
-    }
+
+
+
+
+
+
+
 }

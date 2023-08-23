@@ -1,27 +1,22 @@
-/*
- * @author Jo Scholtes
- * */
 import java.awt.*;
 
 public class DrawPanel extends javax.swing.JPanel {
 
-    private Doodle doodle;
-    private final Dimension SCREENSIZE=Toolkit.getDefaultToolkit().getScreenSize();
+    private DoodlePre doodle;
     private boolean gameOver=false;
+    private Dimension screensize;
+
+    public void setScreensize(Dimension screensize) {
+        this.screensize = screensize;
+    }
 
     public void setGameOver(boolean gameOver) {
         this.gameOver = gameOver;
     }
 
-    public void takeDoodle() {
-        doodle= Messager.getDoodle();
+    public void setDoodle(DoodlePre doodle) {
+        this.doodle = doodle;
     }
-
-    public DrawPanel() {
-        Messager.setDrawPanel(this);
-    }
-
-
 
     public void paintComponent(Graphics g){
         if(!gameOver) {
@@ -29,11 +24,11 @@ public class DrawPanel extends javax.swing.JPanel {
                 c.repaint();
             }
             g.setColor(Color.BLACK);
-            g.fillRect(0, SCREENSIZE.height / 8, SCREENSIZE.width / 3, SCREENSIZE.height / 8 * 7);
+            g.fillRect(0, screensize.height/8, screensize.width/3, screensize.height/8*7);
             doodle.draw(g);
-            for (Platform p : Platform.getPlatforms()) {
-                p.draw(g);
-            }
+            ApplyFunction draw =(p)->p.draw(g);
+            PlatformDat.applyMethod(draw);
+
         }
     }
 }
